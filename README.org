@@ -1,0 +1,43 @@
+* Iterators
+Iterators provide an efficient (few memory allocations) way of lazily iterating over sequences. The iterator for a given data-structure can generally be created with a constant (small) number of allocations, and iterating past that point should not require additional allocations. This is a contrast to other iteration iteration facilities such as SRFI-41: Streams, which requires an allocation for every element of the stream that's yielded. The following code segments assume the iterator library was imported with the prefix ~i/~.
+** Basic Construction
+An ~<iterator>~ is structure which contain an iteration function. This function accepts the iterator as an argument and returns the next item in the series being iterated, or ~null~ to terminate iterations. ~make-iterator~ will construct an iterator from such a function.
+#+begin_src scheme
+  (define exmaple-iterator
+    (i/make-iterator
+     (let ((item 'example))
+  	 (lambda (this)
+  	   (define result item)
+  	   (set! item i/null)
+  	   result))))
+  (i/to-list! example-iterator) ;; => (example)
+#+end_src
+** Construction Macros
+The ~iterator~ macro is the most simplest way to construct a raw iterator, and abstracts over the mutation of iteration variables. It allows a series of iteration variables to be declared, then evaluates the body expression on each call to iterator. The body should yield multiple values. The first value will be the next item in the stream, and subsequent values will be assigned to the iteration variables. The iterator from the previous example can be defined more simply using ~iterator~.
+#+begin_src scheme
+  (i/to-list!
+   (i/iterator ((item 'example))
+     (values item i/null)))
+  ;; => (example)
+#+end_src
+The following shows how an iterator is created for a list. An extra argument ~null*~ is given to ~iterator~ which is bound to a function returning ~null~ as its first value, then enough values to fill the rest of the iteration variables. This is convenient as the body form must return a consistent number of values so redundant ones must be given in the null case.
+#+begin_src scheme
+  (define (from-list list)
+    (iterator null* ((l list))
+  	(if (null? l)
+  		(null*)
+  		(values (car l) (cdr l)))))
+#+end_src
+** Replacement
+The function driving an iterator may be replaced with that from another iterator by calling ~iterator-replace!~. This allows for a more efficient implementation of functions such as ~append~. This also necessitates additional rules surrounding the destruction and usage of iterators.
+** Destruction
+An iterator "owns" any other iterators that it references. When an iterator is destroyed by some destructive function, all other iterators it references are also destroyed and should be assumed to be invalid after that point. Only the iterator passed to the destructive function remains valid afterwards. As an example:
+#+begin_src scheme
+  (define a (i/just 1 2 3))
+  (define b (i/drop 1 a))
+  (i/next! b) ;; a is destroyed.
+  ;; Invalid.
+  ;; (next! a)
+  ;; Valid, provided b hasn't been exhausted.
+  (i/next! b)
+#+end_src
