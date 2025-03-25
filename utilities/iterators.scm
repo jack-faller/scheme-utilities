@@ -103,11 +103,13 @@
    ((_ let null-name recur ((name value) ...) body ...)
 	(let ((name value) ...)
 	  (make-iterator* ()
+		(define result #f)
 		(set-to-values!
-		 name ...
+		 result name ...
 		 (let ((null-name (lambda () (values null name ...))))
 		   (let recur ((name name) ...)
-			 body ...)))))))
+			 body ...)))
+		result))))
   (zip-impl
    ((_ () (names ...))
 	(make-iterator* () (apply-to-next! values (names ...))))
@@ -137,15 +139,17 @@
  (iterator let)
  (iterator* let*))
 
+;; Each function should be associated with only one iterator.
 (define (iterator-replace! old new)
-  (set-iterator-next-function! old (iterator-next-function new)))
+  (set-iterator-next-function! old (iterator-next-function new))
+  (set-iterator-next-function! new #f))
 (define (iterator-defer! old new)
   (iterator-replace! old new) (next! old))
-
-(define empty (make-iterator* (this) null))
 ;; Setting iter to null on the EOS would make this more predictable but it
 ;; would also incur an overhead and preclude multi-valued iterators.
 (define (next! iter) ((iterator-next-function iter) iter))
+
+(define empty (make-iterator* (this) null))
 (define (cons item iter)
   (make-iterator* (this)
 	(iterator-replace! this iter)
