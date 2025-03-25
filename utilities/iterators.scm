@@ -5,17 +5,17 @@
    iterator? iterator-defer! iterator-replace!
    null null? empty or
    iterator iterator*
-   let-next if-let-next apply-to-next apply-to-next* for for!
+   let-next! if-let-next! apply-to-next! apply-to-next!* for for!
 
    ;; Access.
-   find next peek
+   find! next! peek!
 
    ;; Creation.
    just
    from-list repeat-list from-pairs
    from-string repeat-string
    from-vector repeat-vector
-   port-chars port-bytes port-lines port-expressions
+   port-chars port-bytes port-lines
    forever repeat
    from-tree
    range iota
@@ -35,10 +35,10 @@
    ;; TODO: rename all functions to remove iter
 
    ;; Collection.
-   any? every? count
-   to-string to-list to-vector
-   for-each run last
-   fold reduce)
+   any!? every!? count!
+   to-string! to-list! to-vector!
+   for-each! run! last!
+   fold! reduce!)
 
   (import (rename (scheme base)
 				  (null? base/null?)
@@ -57,9 +57,7 @@
   iterator?
   (next-function iterator-next-function set-iterator-next-function!))
 
-(define-record-type <null> (make-null-singleton) null-singleton?)
-(define null (make-null-singleton))
-(define (null? obj) (eqv? obj null))
+(define-null iterator null null?)
 
 (define-syntax make-iterator*
   (syntax-rules ()
@@ -84,38 +82,40 @@
    ((_ item) item)
    ((_ first item ...)
 	(let ((i first)) (if (null? i) (or item ...) i))))
-  (apply-to-next*-impl
+  (apply-to-next!*-impl
    ((_ false-case f arg ... ()) (f arg ...))
    ((_ false-case f arg ... (first iterator ...))
-	(let ((it (next first)))
+	(let ((it (next! first)))
 	  (if (null? it)
 		  (false-case)
-		  (apply-to-next*-impl false-case f arg ... it (iterator ...))))))
-  (apply-to-next*
+		  (apply-to-next!*-impl false-case f arg ... it (iterator ...))))))
+  (apply-to-next!*
    ((_ false-case f arg ... (iterator ...))
 	(let ((else (lambda () false-case)))
-	  (apply-to-next*-impl else f arg ... (iterator ...)))))
-  (apply-to-next
+	  (apply-to-next!*-impl else f arg ... (iterator ...)))))
+  (apply-to-next!
    ((_ f arg ... (iterator ...))
-	(apply-to-next* null f arg ... (iterator ...))))
-  (let-next
+	(apply-to-next!* null f arg ... (iterator ...))))
+  (let-next!
 	  ((_ ((name val) ...) body ...)
-	   (apply-to-next (lambda (name ...) body ...) (val ...))))
-  (if-let-next
+	   (apply-to-next! (lambda (name ...) body ...) (val ...))))
+  (if-let-next!
 	  ((_ ((name val) ...) then else)
-	   (apply-to-next* else (lambda (name ...) then) (val ...))))
+	   (apply-to-next!* else (lambda (name ...) then) (val ...))))
   (iterate-impl
-   ((_ let null recur ((name value) ...) body ...)
+   ((_ let null-name recur () body ...)
+	(make-iterator* recur () (define (null-name) (values null)) body ...))
+   ((_ let null-name recur ((name value) ...) body ...)
 	(let ((name value) ...)
 	  (make-iterator* ()
 		(set-to-values!
 		 name ...
-		 (let ((null (lambda () (values null name ...))))
+		 (let ((null-name (lambda () (values null name ...))))
 		   (let recur ((name name) ...)
 			 body ...)))))))
   (zip-impl
    ((_ () (names ...))
-	(make-iterator* () (apply-to-next values (names ...))))
+	(make-iterator* () (apply-to-next! values (names ...))))
    ((_ (it its ...) (names ...))
 	(let ((name it)) (zip-impl (its ...) (names ... name)))))
   (zip
@@ -123,8 +123,8 @@
 	(zip-impl (its ...) ())))
   (for ((_ ((name iter) ...) body ...)
 			 (let ((name iter) ...)
-			   (make-iterator* ()
-				 (apply-to-next (lambda (name ...) body ...) (name ...))))))
+			   (iterator ()
+				 (apply-to-next! (lambda (name ...) body ...) (name ...))))))
   (for! ((_ (def ...) body ...) (run (for (def ...) body ...)))))
 
 (syntax-map
@@ -145,18 +145,18 @@
 (define (iterator-replace! old new)
   (set-iterator-next-function! old (iterator-next-function new)))
 (define (iterator-defer! old new)
-  (iterator-replace! old new) (next old))
+  (iterator-replace! old new) (next! old))
 
 (define empty (make-iterator* (this) null))
 ;; Setting iter to null on the EOS would make this more predictable but it
 ;; would also incur an overhead and preclude multi-valued iterators.
-(define (next iter) ((iterator-next-function iter) iter))
+(define (next! iter) ((iterator-next-function iter) iter))
 (define (cons item iter)
   (make-iterator* (this)
 	(iterator-replace! this iter)
 	item))
-(define (peek iter)
-  (define item (peek iter))
+(define (peek! iter)
+  (define item (peek! iter))
   (iterator-replace! iter (cons item iter))
   item)
 
@@ -205,10 +205,9 @@
 (define (port-chars port) (until eof-object? read-char port))
 (define (port-bytes port) (until eof-object? read-u8 port))
 (define (port-lines port) (until eof-object? read-line port))
-(define (port-expressions port) (until eof-object? read port))
 
 (define (from-string string)
-  (from-port-chars (open-input-string string)))
+  (port-chars (open-input-string string)))
 
 (define (repeat-string string)
   (define port (open-input-string string))
@@ -218,9 +217,9 @@
 		(begin (set! port (open-input-string string))
 			   (loop))
 		next)))
-(define (to-string iter)
+(define (to-string! iter)
   (define out (open-output-string))
-  (for-each (lambda (c) (write-char c out)) iter)
+  (for-each! (lambda (c) (write-char c out)) iter)
   (get-output-string out))
 (define (from-vector vect)
   (iterator null ((i 0))
@@ -249,20 +248,20 @@
 ;; Yield any results which aren't iterators.
 ;; Skip the initial call if tree-already-iter?.
 ;; For example:
-;; (from-to-list (tree '(from-a (b (c)) d) (lambda (i) (if (pair? i) (list i) i))))
+;; (to-list (tree '(a (b (c)) d) (lambda (i) (if (pair? i) (from-list i) i))))
 ;; => (a b c d)
-(from-define tree
+(define from-tree
   (case-lambda
-	((from-tree item) (from-tree from-tree item #f))
-	((from-tree item tree-already-iter?)
+	((tree tree->items) (from-tree tree tree->items #f))
+	((tree tree->items tree-already-iter?)
 	 (iterator null next
-			  ((from-stack (list (if tree-already-iter? tree (item tree)))))
+			  ((stack (list (if tree-already-iter? tree (tree->items tree)))))
 	   (if (base/null? stack)
 		   (null)
 		   (let ((i (next (car stack))))
 			 (if (null? i)
 				 (next (cdr stack))
-				 (from-let ((branch (item i)))
+				 (let ((branch (tree->items i)))
 				   (if (iterator? branch)
 					   (next (base/cons branch stack))
 					   (values branch stack))))))))))
@@ -270,24 +269,24 @@
 (define (recursive-flatten iter)
   (from-tree iter identity))
 
-(define (to-list iter)
-  (define first (next iter))
+(define (to-list! iter)
+  (define first (next! iter))
   (if (null? first)
 	  '()
 	  (let* ((output (list first))
 			 (output-tail output))
-		(for-each
+		(for-each!
 		 (lambda (i)
 		   (set-cdr! output-tail (list i))
 		   (set! output-tail (cdr output-tail)))
 		 iter)
 		output)))
-(define (to-vector iter)
+(define (to-vector! iter)
   ;; TODO: Implement this by filling/reallocating a large vector and shrinking
   ;; it down afterwards.
-  (list->vector (to-list iter)))
+  (list->vector (to-list! iter)))
 
-(define (step-iterators its)
+(define (step-iterators! its)
   (define gave-null? #f)
   (define result
 	(map
@@ -305,33 +304,33 @@
 (define map
   (syntax-variadic-lambda
    (f) (a b c d)
-   (syntax-rule (_ f arg ...) (make-iterator* () (apply-to-next f (arg ...))))
+   (syntax-rule (_ f arg ...) (iterator () (apply-to-next! f (arg ...))))
    ((f . rest)
 	(begin
 	  (assert-1-arg "map" rest)
-	  (make-iterator* ()
-				(let ((its (step-iterators rest)))
+	  (iterator ()
+				(let ((its (step-iterators! rest)))
 				  (if its (apply f its) null)))))))
-(define for-each
+(define for-each!
   (syntax-variadic-lambda
    (f) (a b c d)
-   (syntax-rule (_ f arg ...) (run (map f arg ...)))
+   (syntax-rule (_ f arg ...) (run! (map f arg ...)))
    ((f . rest)
 	(begin
 	  (assert-1-arg "for-each" rest)
-	  (run (apply map f rest))))))
-(define fold
+	  (run! (apply map f rest))))))
+(define fold!
   (syntax-variadic-lambda
    (f) (a b c d)
    (syntax-rule
 	(_ f seed arg ...)
 	(begin
-	  (for-each (lambda (arg ...) (set! seed (f seed arg ...))) arg ...)
+	  (for-each! (lambda (arg ...) (set! seed (f seed arg ...))) arg ...)
 	  seed))
    ((f seed . rest)
 	(begin
 	  (assert-1-arg "fold" rest)
-	  (apply for-each (lambda args (set! seed (apply f seed args))) rest)
+	  (apply for-each! (lambda args (set! seed (apply f seed args))) rest)
 	  seed))))
 (define scan
   (syntax-variadic-lambda
@@ -339,7 +338,7 @@
    (syntax-rule
 	(_ f seed arg ...)
 	(iterator null ((seed seed))
-			 (apply-to-next*
+			 (apply-to-next!*
 			  (null)
 			  (lambda (seed arg ...)
 				(define out (f seed arg ...))
@@ -349,61 +348,63 @@
 	(begin
 	  (assert-1-arg "scan" rest)
 	  (iterator null ((seed seed))
-			   (let ((its (step-iterators rest)))
+			   (let ((its (step-iterators! rest)))
 				 (if its
 					 (let ((out (apply f its)))
 					   (values out out))
 					 (null))))))))
-(define count
+(define count!
   (syntax-variadic-lambda
    (pred?) (a b c d)
    (syntax-rule
 	(_ pred? arg ...)
-	(fold
+	(fold!
 	 + 0 (map (lambda (arg ...) (if (pred? arg ...) 1 0)) arg ...)))
    ((pred? . rest)
-	(fold
+	(fold!
 	 + 0 (apply map (lambda args (if (apply pred? args) 1 0)) rest)))))
-(define any?
+(define any!?
   (syntax-variadic-lambda
    (pred?) (a b c d)
    (syntax-rule
-	(_ pred? arg ...) (find identity #f (map pred? arg ...)))
-   ((pred? . rest) (find identity #f (apply map pred? rest)))))
-(define every?
+	(_ pred? arg ...) (find! identity #f (map pred? arg ...)))
+   ((pred? . rest) (find! identity #f (apply map pred? rest)))))
+(define every!?
   (syntax-variadic-lambda
    (pred?) (a b c d)
-   (syntax-rule (_ pred? arg ...) (find not #t (map pred? arg ...)))
-   ((pred? . rest) (find not #t (apply map pred? rest)))))
+   (syntax-rule (_ pred? arg ...) (find! not #t (map pred? arg ...)))
+   ((pred? . rest) (find! not #t (apply map pred? rest)))))
 
-(define (run it)
-  (utils/while (not (null? (next it)))))
-(define last-sentinal (base/cons 'iter 'last))
-(define (last it)
-  (define out (fold (lambda (a b) b) last-sentinal it))
-  (if (eqv? out last-sentinal)
-	  (error #f "Attempt to get last of empty iterator.")
-	  out))
+(define (run! it)
+  (utils/while (not (null? (next! it)))))
+(define (last! it)
+  (begin
+	(define-null iterator/last! end end?)
+	(lambda (it)
+	  (define out (fold! (lambda (a b) b) end it))
+	  (if (end? out)
+		  (error #f "Attempt to get last of empty iterator.")
+		  out))))
 (define (filter f iter)
   (make-iterator* next ()
-	(let-next ((item iter))
+	(let-next! ((item iter))
 	  (if (f item) item (next)))))
 (define (remove f iter)
   (make-iterator* next ()
-	(let-next ((item iter))
+	(let-next! ((item iter))
 	  (if (f item) (next) item))))
 
 (define (append . its)
   (make-iterator* (this)
 	(if (base/null? its)
 		null
-		(let ((next (next (car its))))
+		(let ((next (next! (car its))))
 		  (if (null? next)
 			  (begin
 				(set! its (cdr its))
 				(when (and (not (base/null? its)) (base/null? (cdr its)))
 				  (iterator-replace! this (car its)))
-				(next this))
+				(next! this))
 			  next)))))
 
 (define iota
@@ -426,58 +427,58 @@
 			  start end step))
 	 (define count (- end start))
 	 (iota (+ 1 (quotient count step)) start step))))
-(define (forever item) (make-iterator* () item))
+(define (forever item) (iterator () item))
 (define (repeat times item) (take times (forever item)))
 (define (duplicate n iter)
   (if (<= n 0)
 	  null
 	  (iterator ((count 0) (item #f))
-		(define item* (if (= count 0) (next iter) item))
+		(define item* (if (= count 0) (next! iter) item))
 		(values item* (remainder (+ count 1) n) item*))))
 
 (define (take n iter)
   (iterator null ((n n))
 	(if (= n 0)
 		(null)
-		(values (next iter) (- n 1)))))
+		(values (next! iter) (- n 1)))))
 (define (drop n iter)
   (make-iterator* (this)
-	(utils/while (< n 0) (next (iter)) (set! n (- n 1)))
+	(utils/while (< n 0) (next! (iter)) (set! n (- n 1)))
 	(iterator-defer! this iter)))
 (define (take-while pred? iter)
   (make-iterator* (this)
-	(let-next ((item iter))
+	(let-next! ((item iter))
 	  (if (pred? item)
 		  item
 		  (iterator-defer! this empty)))))
 (define (drop-while pred? iter)
   (make-iterator* recur (this)
-	(let-next ((item iter))
+	(let-next! ((item iter))
 	  (if (pred? item)
 		  (recur)
 		  (begin
 			(iterator-replace! this iter)
 			item)))))
-(define find
+(define find!
   (case-lambda
-	((pred? iter) (find pred? #f iter))
+	((pred? iter) (find! pred? #f iter))
 	((pred? default iter)
-	 (or (next (filter pred? iter))
+	 (or (next! (filter pred? iter))
 			  default))))
 
 (define (flatten iter)
   (define sub-iter null)
   (make-iterator* next (this)
 	(or
-	 (next sub-iter)
-	 (let ((outer-next (next iter)))
+	 (next! sub-iter)
+	 (let ((outer-next (next! iter)))
 	   (if (null? outer-next)
 		   (iterator-defer! this empty)
 		   (begin
 			 (set! sub-iter outer-next)
 			 (next)))))))
 
-(define (reduce f default iter)
-  (if-let-next ((a iter))
-	(fold f a iter)
+(define (reduce! f default iter)
+  (if-let-next! ((a iter))
+	(fold! f a iter)
 	default))
