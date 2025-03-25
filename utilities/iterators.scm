@@ -29,13 +29,8 @@
    cons append
    zip
 
-   ;; TODO: nth!
-   ;; TODO: (collect! sink iterator ...) <- allows multi-valued sinks
-   ;; I actually can't think of a use-case for collect!, given all the sink functions are also implemented here.
-   ;; TODO: rename all functions to remove iter
-
    ;; Collection.
-   any!? every!? count!
+   any!? every!? count! nth!
    to-string! to-list! to-vector!
    for-each! run! last!
    fold! reduce!)
@@ -465,6 +460,10 @@
 	((pred? default iter)
 	 (or (next! (filter pred? iter))
 			  default))))
+(define (nth! n iter)
+  (do ((count 0 (++ count))
+	   (val (next! iter) (next! iter)))
+	  ((>= count n) val)))
 
 (define (flatten iter)
   (define sub-iter null)
