@@ -1,7 +1,8 @@
 (define-library (utilities)
-  (export ++ --  where where* whererec whererec* set-to-values!)
+  (export identity ++ --  where where* whererec whererec* set-to-values! while until)
   (import (scheme base) (utilities syntax)))
 
+(define (identity x) x)
 (define (++ x) (+ x 1))
 (define (-- x) (- x 1))
 
@@ -11,6 +12,11 @@
   (define-syntax* macro-name
 	((_ result (name value) ...) (let-type ((name value) ...) result))))
  (where let) (where* let*) (whererec letrec) (whererec* letrec*))
+
+
+(define-syntax*
+  (while ((_ test body ...) (let loop () (when test body ... (loop)))))
+  (until ((_ test body ...) (let loop () (unless test body ... (loop))))))
 
 (define-syntax*
   (set-to-values!
