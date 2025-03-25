@@ -97,7 +97,7 @@
   (if-let-next!
 	  ((_ ((name val) ...) then else)
 	   (apply-to-next!* else (lambda (name ...) then) (val ...))))
-  (iterate-impl
+  (iterator-impl
    ((_ let null-name recur () body ...)
 	(make-iterator* recur () (define (null-name) (values null)) body ...))
    ((_ let null-name recur ((name value) ...) body ...)
@@ -131,11 +131,11 @@
   (define-syntax*
 	(macro-name
 	 ((_ ((name value) ...) body ...)
-	  (iterate-impl let-type ignore-1 ignore-2 ((name value) ...) body ...))
+	  (iterator-impl let-type ignore-1 ignore-2 ((name value) ...) body ...))
 	 ((_ null ((name value) ...) body ...)
-	  (iterate-impl let-type null ignore ((name value) ...) body ...))
+	  (iterator-impl let-type null ignore ((name value) ...) body ...))
 	 ((_ null recur ((name value) ...) body ...)
-	  (iterate-impl let-type null recur ((name value) ...) body ...)))))
+	  (iterator-impl let-type null recur ((name value) ...) body ...)))))
  (iterator let)
  (iterator* let*))
 
