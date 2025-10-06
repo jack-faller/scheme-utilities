@@ -28,10 +28,11 @@ The following shows how an iterator is created for a list. An extra argument ~nu
   		(null*)
   		(values (car l) (cdr l)))))
 #+end_src
+Another useful side-effect of the function defined by ~iterator~ is to replace the current iterator with the empty iterator, so once a null value is returned, the iteration function will not be called again and the iterator will forever return null.
 ** Replacement
 The function driving an iterator may be replaced with that from another iterator by calling ~iterator-replace!~. This allows for a more efficient implementation of functions such as ~append~. This also necessitates additional rules surrounding the destruction and usage of iterators.
 ** Destruction
-An iterator "owns" any other iterators that it references. When an iterator is destroyed by some destructive function, all other iterators it references are also destroyed and should be assumed to be invalid after that point. Only the iterator passed to the destructive function remains valid afterwards. As an example:
+An iterator "owns" any other iterators that it references. When an iterator is destroyed by some destructive function (functions which end in ~!~), all other iterators it references are also destroyed and should be assumed to be invalid after that point. Only the iterator passed to the destructive function remains valid afterwards. As an example:
 #+begin_src scheme
   (define a (i/just 1 2 3))
   (define b (i/drop 1 a))
@@ -41,3 +42,4 @@ An iterator "owns" any other iterators that it references. When an iterator is d
   ;; Valid, provided b hasn't been exhausted.
   (i/next! b)
 #+end_src
+To prevent errors, iterators consumed by ~iterator-replace!~ will be set to ~empty~.  As a side effect of that, you may consume the empty iterator without destroying it.
