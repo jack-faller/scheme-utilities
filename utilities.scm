@@ -1,6 +1,7 @@
 (define-library (utilities)
   (export identity ++ --  where where* whererec whererec* set-to-values! while until
-		  <null> make-null-singleton null-singleton? define-null)
+		  <null> make-null-singleton null-singleton? define-null
+		  length= length< length<= length> length>=)
   (import (scheme base) (utilities syntax)))
 
 (define (identity x) x)
@@ -35,4 +36,21 @@
   ((_ origin name test?)
    (begin
 	 (define name (make-null-singleton 'origin))
-	 (define (test? object) (eqv? object name)))))
+	 (define (test? object) (eq? object name)))))
+
+(define (nth-cdr list n)
+  (cond
+   ((zero? n) list)
+   ((null? list) #f)
+   (else (nth-cdr (cdr list) (-- n)))))
+
+(define (length= list length)
+  (null? (nth-cdr list length)))
+(define (length>= list length)
+  (nth-cdr list length))
+(define (length< list length)
+  (not (length>= list length)))
+(define (length<= list length)
+  (length< list (++ length)))
+(define (length> list length)
+  (length>= list (++ length)))
