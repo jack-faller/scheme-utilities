@@ -4,16 +4,16 @@
 
 (define-syntax define-syntax*
   (syntax-rules ()
-	((_ (rule ...) ...) (begin (define-syntax* rule ...) ...))
-	((_ name ((pat . pats) sub) ...)
-	 (define-syntax name (syntax-rules () ((pat . pats) sub) ...)))
-	((_ name (ident ...) (pat sub) ...)
-	 (define-syntax name (syntax-rules (ident ...) (pat sub) ...)))
-	;; SRFI-46 custom ellipses.
-	((_ name ellip ((pat . pats) sub) ...)
-	 (define-syntax name (syntax-rules ellip () ((pat . pats) sub) ...)))
-	((_ name ellip (ident ...) (pat sub) ...)
-	 (define-syntax name (syntax-rules ellip (ident ...) (pat sub) ...)))))
+    ((_ (rule ...) ...) (begin (define-syntax* rule ...) ...))
+    ((_ name ((pat . pats) sub) ...)
+     (define-syntax name (syntax-rules () ((pat . pats) sub) ...)))
+    ((_ name (ident ...) (pat sub) ...)
+     (define-syntax name (syntax-rules (ident ...) (pat sub) ...)))
+    ;; SRFI-46 custom ellipses.
+    ((_ name ellip ((pat . pats) sub) ...)
+     (define-syntax name (syntax-rules ellip () ((pat . pats) sub) ...)))
+    ((_ name ellip (ident ...) (pat sub) ...)
+     (define-syntax name (syntax-rules ellip (ident ...) (pat sub) ...)))))
 (define-syntax* syntax-rule
   ((_ pat sub) (syntax-rules () (pat sub)))
   ((_ (lit ...) pat sub) (syntax-rules (lit ...) (pat sub)))
@@ -32,22 +32,22 @@
 (define-syntax* syntax-variadic-lambda
   ((_ (parameter ...) (rest-parameter ...) variable-case)
    (let-syntax ((body variable-case))
-	 (syntax-variadic-lambda
-	  (parameter ...) (rest-parameter ...) variable-case
-	  ((parameter ... rest-parameter ... . rest)
-	   (body parameter ... rest-parameter ... . rest)))))
+     (syntax-variadic-lambda
+      (parameter ...) (rest-parameter ...) variable-case
+      ((parameter ... rest-parameter ... . rest)
+       (body parameter ... rest-parameter ... . rest)))))
   ((_ (parameter ...) (rest-parameter ...) variable-case final-case)
    (letrec-syntax
-	   ((body variable-case)
-		(collect-cases
-		 (syntax-rules ::: ()
-		   ((_ used-items () (cases :::))
-			(case-lambda cases ::: final-case))
-		   ((_ (used-item :::) (this-item item :::) (cases :::))
-			(collect-cases
-			 (used-item ::: this-item) (item :::)
-			 (cases
-			  :::
-			  ((parameter ... used-item ::: this-item)
-			   (body parameter ... used-item ::: this-item))))))))
-	 (collect-cases () (rest-parameter ...) ()))))
+       ((body variable-case)
+        (collect-cases
+         (syntax-rules ::: ()
+           ((_ used-items () (cases :::))
+            (case-lambda cases ::: final-case))
+           ((_ (used-item :::) (this-item item :::) (cases :::))
+            (collect-cases
+             (used-item ::: this-item) (item :::)
+             (cases
+              :::
+              ((parameter ... used-item ::: this-item)
+               (body parameter ... used-item ::: this-item))))))))
+     (collect-cases () (rest-parameter ...) ()))))

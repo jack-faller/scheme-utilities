@@ -1,7 +1,7 @@
 (define-library (utilities)
   (export identity ++ --  where where* whererec whererec* set-to-values! while until
-		  <null> make-null-singleton null-singleton? define-null
-		  length= length< length<= length> length>=)
+          <null> make-null-singleton null-singleton? define-null
+          length= length< length<= length> length>=)
   (import (scheme base) (utilities syntax)))
 
 (define (identity x) x)
@@ -12,7 +12,7 @@
  (syntax-rule
   ::: (_ macro-name let-type)
   (define-syntax* macro-name
-	((_ result (name value) ...) (let-type ((name value) ...) result))))
+    ((_ result (name value) ...) (let-type ((name value) ...) result))))
  (where let) (where* let*) (whererec letrec) (whererec* letrec*))
 
 
@@ -25,9 +25,9 @@
    ((_ names ... values) (setter-impl (names ...) () values)))
   (setter-impl
    ((_ () ((name name*) ...) values)
-	(let-values (((name* ...) values)) (set! name name*) ...))
+    (let-values (((name* ...) values)) (set! name name*) ...))
    ((_ (first name ...) (pairs ...) values)
-	(setter-impl (name ...) (pairs ... (first name*)) values))))
+    (setter-impl (name ...) (pairs ... (first name*)) values))))
 
 (define-record-type <null>
   (make-null-singleton origin) null-singleton?
@@ -35,8 +35,8 @@
 (define-syntax* define-null
   ((_ origin name test?)
    (begin
-	 (define name (make-null-singleton 'origin))
-	 (define (test? object) (eq? object name)))))
+     (define name (make-null-singleton 'origin))
+     (define (test? object) (eq? object name)))))
 
 (define (nth-cdr list n)
   (cond
