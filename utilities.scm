@@ -1,5 +1,5 @@
 (define-library (utilities)
-  (export identity ++ --  where where* whererec whererec* while until
+  (export identity ++ -- -> ->> where where* whererec whererec* while until
           set-to-values! set-to-values!*
           define-singleton
           length= length< length<= length> length>=)
@@ -20,6 +20,28 @@
 (define-syntax*
   (while ((_ test body ...) (let loop () (when test body ... (loop)))))
   (until ((_ test body ...) (let loop () (unless test body ... (loop))))))
+
+(define-syntax*
+  (thread-first
+   ((_ it (threaded-function threaded-argument ...))
+    (threaded-function it threaded-argument ...))
+   ((_ it f)
+    (f it)))
+  (thread-last
+   ((_ it (threaded-function threaded-argument ...))
+    (threaded-function threaded-argument ... it))
+   ((_ it f)
+    (f it)))
+  (->
+   ((_ form threaded ...)
+    (let* ((it form)
+           (it (thread-first it threaded)) ...)
+      it)))
+  (->>
+   ((_ form threaded ...)
+    (let* ((it form)
+           (it (thread-last it threaded)) ...)
+      it))))
 
 (define-syntax*
   (set-to-values!
