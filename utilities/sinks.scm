@@ -2,7 +2,6 @@
   (export
    sink sink? make-sink submit! finish! peek
    any? every? count
-   ;; TODO: this is wrong but Guile requires these brackets here.
    (rename sink:list list)
    (rename sink:vector vector)
    (rename sink:string string)

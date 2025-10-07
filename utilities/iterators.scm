@@ -35,7 +35,6 @@
    zip
    merge interleave select
 
-   ;; TODO: replace these all with sinks.
    ;; Collection.
    submit-to! collect! run! for-each!)
   (import (scheme base)
