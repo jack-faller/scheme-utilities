@@ -1,5 +1,5 @@
 * (Utilities Iterators)
-Iterators provide an efficient (few memory allocations) way of lazily iterating over sequences. The iterator for a given data-structure can generally be created with a constant (small) number of allocations, and iterating past that point should not require additional allocations. This is a contrast to other iteration iteration facilities such as SRFI-41: Streams, which requires an allocation for every element of the stream that's yielded. The following code segments assume the iterator library was imported with the prefix ~i/~.
+Iterators provide an efficient (few memory allocations) way of lazily iterating over sequences. The iterator for a given data-structure can generally be created with a constant (small) number of allocations, and iterating past that point should not require additional allocations. This is a contrast to other iteration iteration facilities such as SRFI-41: Streams, which requires an allocation for every element of the stream that's yielded. The following code segments assume the iterator library was imported with the prefix ~i/~ and the sink library with ~s/~.
 ** Basic Construction
 An ~<iterator>~ is structure which contain an iteration function. This function accepts the iterator as an argument and returns the next item in the series being iterated, or ~null~ to terminate iterations. ~make-iterator~ will construct an iterator from such a function.
 #+begin_src scheme
@@ -15,7 +15,8 @@ An ~<iterator>~ is structure which contain an iteration function. This function 
 ** Construction Macros
 The ~iterator~ macro is the simplest way to construct an iterator, and abstracts over the mutation of iteration variables. It allows a series of iteration variables to be declared, then evaluates the body expression on each call to iterator. The body should yield multiple values. The first value will be the next item in the stream, and subsequent values will be assigned to the iteration variables. The iterator from the previous example can be defined more simply using ~iterator~.
 #+begin_src scheme
-  (i/to-list!
+  (i/collect!
+   (s/list)
    (i/iterator ((item 'example))
      (values item i/null)))
   ;; => (example)
@@ -24,9 +25,9 @@ The following shows how an iterator is created for a list. An extra argument ~nu
 #+begin_src scheme
   (define (from-list list)
     (i/iterator null* ((l list))
-  	(if (null? l)
-  		(null*)
-  		(values (car l) (cdr l)))))
+      (if (null? l)
+  	(null*)
+  	(values (car l) (cdr l)))))
 #+end_src
 Another useful side-effect of the function defined by ~iterator~ is to replace the current iterator with the empty iterator, so once a null value is returned, the iteration function will not be called again and the iterator will forever return null.
 ** Replacement
