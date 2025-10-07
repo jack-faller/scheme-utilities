@@ -152,20 +152,14 @@
     (list-copy head)))
 
 (define (sink:vector)
-  (define (copy-to-vector length list)
-    (let ((out (make-vector length))
-	  (i (- length 1)))
-      (for-each
-       (lambda (x)
-	 (vector-set! out i x)
-	 (set! i (-- i)))
-       list)
-      out))
-  (sink ((count 0) (items '()))
+  (sink ((length 0) (items (make-vector 16)))
     (lambda (next)
-      (values #f (++ count) (cons next items)))
-    (copy-to-vector count items)
-    (copy-to-vector count items)))
+      (when (= length (vector-length items))
+        (set! items (vector-resize items (* (vector-length items) 2))))
+      (vector-set! items length next)
+      (values #f (++ length) items))
+    (if (= length (vector-length items)) items (vector-resize items length))
+    (if (= length (vector-length items)) items (vector-resize items length))))
 
 (define sink:string
   (case-lambda

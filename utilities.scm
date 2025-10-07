@@ -1,9 +1,10 @@
 (define-library (utilities)
   (export identity ++ -- -> ->> where where* whererec whererec* while until
           set-to-values! set-to-values!*
+          vector-resize vector-copy-to-start!
           define-singleton
           length= length< length<= length> length>=)
-  (import (scheme base) (utilities syntax)))
+  (import (scheme base) (scheme case-lambda) (utilities syntax)))
 
 (define (identity x) x)
 (define (++ x) (+ x 1))
@@ -82,3 +83,13 @@
   (length< list (++ length)))
 (define (length> list length)
   (length>= list (++ length)))
+
+(define (vector-copy-to-start! dst src)
+  (vector-copy! dst 0 src 0 (min (vector-length dst) (vector-length src)))
+  dst)
+(define vector-resize
+  (case-lambda
+    ((vector new-length)
+     (vector-copy-to-start! (make-vector new-length) vector))
+    ((vector new-length fill)
+     (vector-copy-to-start! (make-vector new-length fill) vector))))
