@@ -167,7 +167,7 @@
   ((_ item ...) (from-vector (vector item ...))))
 (define (from-list list)
   (iterator null ((l list))
-    (if (? l)
+    (if (null? l)
         (null)
         (values (car l) (cdr l)))))
 
