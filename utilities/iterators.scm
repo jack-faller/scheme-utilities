@@ -75,7 +75,7 @@
   (iter:or
    ((_ item) item)
    ((_ first item ...)
-    (let ((i first)) (if (iterf:null? i) (iter:or item ...) i))))
+    (let ((i first)) (if (iter:null? i) (iter:or item ...) i))))
   (apply-to-next!*-impl
    ((_ false-case f arg ... ()) (f arg ...))
    ((_ false-case f arg ... (first iterator ...))
@@ -262,7 +262,7 @@
                  (next (cdr stack))
                  (let ((branch (tree->items i)))
                    (if (iterator? branch)
-                       (next (base:cons branch stack))
+                       (next (cons branch stack))
                        (values branch stack))))))))))
 
 (define (recursive-flatten iter)
