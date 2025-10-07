@@ -108,7 +108,7 @@
          name ...
          (let ((null-name (lambda ()
                             (iterator-replace! this empty)
-                            (values null name ...))))
+                            (values iter:null name ...))))
            (let recur ((name name) ...)
              body ...)))))))
   (zip-impl
