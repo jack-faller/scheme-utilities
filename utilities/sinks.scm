@@ -6,7 +6,7 @@
    (rename sink:list list)
    (rename sink:vector vector)
    (rename sink:string string)
-   ;; TODO: max min
+   greatest least
    fold reduce
    nth last
    find find-last)
@@ -85,6 +85,25 @@
     (lambda (next) (values #f next))
     value
     value))
+
+(define greatest
+  (case-lambda
+    ((default) (greatest > default))
+    ((> default)
+     (sink ((max default))
+       (lambda (next)
+         (values #f (if (> next max) next max)))
+       max
+       max))))
+(define least
+  (case-lambda
+    ((default) (greatest > default))
+    ((> default)
+     (sink ((min default))
+       (lambda (next)
+         (values #f (if (> min next) next min)))
+       min
+       min))))
 
 (define any
   (case-lambda
