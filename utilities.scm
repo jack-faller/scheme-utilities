@@ -1,5 +1,6 @@
 (define-library (utilities)
-  (export identity ++ --  where where* whererec whererec* set-to-values! while until
+  (export identity ++ --  where where* whererec whererec* while until
+          set-to-values! set-to-values!*
           <null> make-null-singleton null-singleton? define-null
           length= length< length<= length> length>=)
   (import (scheme base) (utilities syntax)))
@@ -26,6 +27,13 @@
   (setter-impl
    ((_ () ((name name*) ...) values)
     (let-values (((name* ...) values)) (set! name name*) ...))
+   ((_ (first name ...) (pairs ...) values)
+    (setter-impl (name ...) (pairs ... (first name*)) values)))
+  (set-to-values!*
+   ((_ names ... values) (setter-impl (names ...) () values)))
+  (setter-impl*
+   ((_ () ((name name*) ...) values)
+    (let-values (((first name* ...) values)) (set! name name*) ... first))
    ((_ (first name ...) (pairs ...) values)
     (setter-impl (name ...) (pairs ... (first name*)) values))))
 
