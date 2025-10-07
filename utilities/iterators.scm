@@ -25,7 +25,7 @@
    iterate until while
 
    ;; Manipulation.
-   (rename iter:map map)
+   (rename (iter:map map))
    scan filter remove
    take take-while drop drop-while
    flatten recursive-flatten
