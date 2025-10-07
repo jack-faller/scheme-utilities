@@ -3,9 +3,9 @@
    sink sink? make-sink submit! finish!
    any? every? count
    ;; TODO: this is wrong but Guile requires these brackets here.
-   (rename sink:list list)
-   (rename sink:vector vector)
-   (rename sink:string string)
+   (rename (sink:list list))
+   (rename (sink:vector vector))
+   (rename (sink:string string))
    ;; TODO: max min
    fold reduce
    nth last

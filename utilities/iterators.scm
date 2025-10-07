@@ -3,9 +3,9 @@
    ;; Primitive creation.
    make-iterator make-iterator*
    iterator? iterator-defer! iterator-replace!
-   (rename iter:null null)
-   (rename iter:null? null?)
-   (rename iter:or or)
+   (rename (iter:null null))
+   (rename (iter:null? null?))
+   (rename (iter:or or))
    empty
    iterator iterator*
    let-next! if-let-next! apply-to-next! apply-to-next!* for for!
@@ -30,8 +30,8 @@
    take take-while drop drop-while
    flatten recursive-flatten
    duplicate
-   (rename iter:cons cons)
-   (rename iter:append append)
+   (rename (iter:cons cons))
+   (rename (iter:append append))
    zip
    merge interleave select
 
