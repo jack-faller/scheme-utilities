@@ -235,7 +235,7 @@
   (if (null? list)
       empty
       (iterator null loop ((l list))
-        (if (? l)
+        (if (null? l)
             (loop list)
             (values (car l) (cdr l))))))
 (define (from-pairs list)
@@ -255,7 +255,7 @@
     ((tree tree->items tree-already-iter?)
      (iterator null next
        ((stack (list (if tree-already-iter? tree (tree->items tree)))))
-       (if (? stack)
+       (if (null? stack)
            (null)
            (let ((i (next (car stack))))
              (if (iter:null? i)
@@ -326,7 +326,7 @@
 
 (define (iter:append . its)
   (make-iterator* (this)
-    (if (? its)
+    (if (null? its)
         iter:null
         (let ((next (next! (car its))))
           (if (iter:null? next)
