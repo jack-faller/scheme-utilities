@@ -1,99 +1,161 @@
 (define-library (utilities sinks)
   (export
-   sink sink? finish!
+   sink sink? make-sink submit! finish!
    any? every? count
-   string
-   ;; This doesn't work so I just have to clobber list.
-   ;; (rename list-sink list)
-   list
-   ;; TODO: vector
+   ;; TODO: this is wrong but Guile requires these brackets here.
+   (rename sink:list list)
+   (rename sink:vector vector)
+   (rename sink:string string)
+   ;; TODO: max min
    fold reduce
    nth last
    find find-last)
-  (import (scheme base) (utilities) (utilities syntax)))
+  (import (scheme base)
+          (scheme write)
+          (scheme case-lambda)
+          (utilities)
+          (utilities syntax)))
 
-   ;; TODO: max an min by function (these are aliases)
-   
-(define-singleton <finish> finish finish?)
+(define-record-type <sink>
+  (make-sink submit finish!)
+  sink?
+  (submit sink-submit set-sink-submit!)
+  (finish! sink-finish!))
+(define (submit! sink elt) ((sink-submit sink) elt))
+(define (finish! sink) ((sink-finish! sink)))
 
 (define-syntax* sink (lambda)
   ((_ ((name value) ...) (lambda (parameter ...) body ...) finish)
    (let ((name value) ...)
-     (lambda (source)
-       (source (lambda (parameter ...)
-                 (set-to-values! name ... (begin body ...))))
-       finish)))
+     (make-sink
+      (lambda (parameter ...)
+	(set-to-values!* name ... (begin body ...)))
+      (lambda () finish))))
   ((_ ((name value) ...) (lambda parameters body ...) finish)
    (let ((name value) ...)
-     (lambda (source)
-       (source (lambda parameters
-                 (set-to-values! name ... (begin body ...))))
-       finish)))
+     (make-sink
+      (lambda parameters
+        (set-to-values!* name ... (begin body ...)))
+      (lambda () finish))))
   ((_ ((name value) ...) function finish)
    (let ((name value) ...)
      (lambda (source)
-       (source
-        (syntax-variadic-lambda
-         () (a b c d e)
-         (syntax-rules ::: ()
-           ((_ args :::) (set-to-values! name ... (f args :::)))
-           ((_ args ::: . rest) (set-to-values! name ... (apply f args ::: rest))))))
-       finish))))
+       (make-sink
+	(syntax-variadic-lambda
+	 () (a b c d e)
+	 (syntax-rules ::: ()
+	   ((_ args :::) (set-to-values!* name ... (f args :::)))
+	   ((_ args ::: . rest) (set-to-values!* name ... (apply f args ::: rest)))))
+	(lambda () finish))))))
 
 (define (fold f seed)
   (sink ((seed seed))
-        (lambda (next) (f seed next))
-        seed))
+    (lambda (next) (values #f (f seed next)))
+    seed))
 
 (define (reduce f default)
   (sink ((acc default) (first? #t))
-        (lambda (next)
-          (values (if first? next (f acc next)) #f))
-        acc))
+    (lambda (next)
+      (values #f (if first? next (f acc next)) #f))
+    acc))
 
 (define (nth n default)
   (sink ((value default) (count 0))
-        (lambda (next)
-          (values (if (= count n) next value) (+ count 1)))
-        value))
+    (lambda (next)
+      (values (>= count n) (if (= count n) next value) (+ count 1)))
+    value))
 (define count
   (sink ((count 0))
-        (lambda ignore (++ count))
-        count))
+    (lambda (ignore) (values #f (++ count)))
+    count))
 
-(define (last default) (sink ((value defaut)) (lambda (next) next) value))
+(define (last default)
+  (sink ((value default))
+    (lambda (next) (values #f next))
+    value))
 
-(define (any? f)
-  (sink ((any? #f)) (lambda (next) (or any? (f next))) any?))
-(define (every? f)
-  (sink ((every? #t)) (lambda (next) (and every? (f next))) every?))
-
-(define (string source)
-  (define out (open-output-string))
-  (source (lambda (c) (write-char c out)))
-  (get-output-string out))
+(define any
+  (case-lambda
+    (() (any? identity))
+    ((f)
+     (sink ((any? #f))
+       (lambda (next)
+	 (define any? (or any? (f next)))
+	 (values any? any?))
+       any?))))
+(define every?
+  (case-lambda
+    (() (every? identity))
+    ((f)
+     (sink ((every? #t))
+       (lambda (next)
+	 (define every? (and every? (f next)))
+	 (values (not every?) every?))
+       every?))))
 
 (define (find pred? default)
   (sink ((item default) (found? #f))
-        (lambda (next)
-          (cond (found? (values item found?))
-                ((f next) (values next #t))
-                (else (values item found?))))
-        item))
-(define (find-right pred? default)
+    (lambda (next)
+      (if (or found? (pred? next))
+	  (values #t item #t)
+          (values #f item found?)))
+    item))
+(define (find-last pred? default)
   (sink ((item default))
-        (lambda (next) (if (f next) next item))
-        item))
+    (lambda (next) (values #f (if (pred? next) next item)))
+    item))
 
-(define (list source)
-  (define head '())
-  (define tail '())
-  (source
-   (lambda (next)
-     (if (null? head)
-         (begin
-           (set! head (cons next '()))
-           (set! tail head))
-         (begin
-           (set-cdr! tail (cons next '()))
-           (set! tail (cdr tail)))))))
+(define (sink:list)
+  (sink ((head '()) (tail '()))
+    (lambda (next)
+      (define it (cons next '()))
+      (if (null? head)
+	  (values #f it it)
+	  (begin (set-cdr! tail it)
+		 (values #f head it))))
+    head))
+
+(define (sink:vector)
+  (define list (sink:list))
+  (sink ((count 0))
+    (lambda (next)
+      (submit! list next)
+      (values #f (++ count)))
+    (let ((out (make-vector count))
+	  (i 0))
+      (for-each
+       (lambda (x)
+	 (vector-set! out i x)
+	 (set! i (++ i)))
+       (finish! list))
+      out)))
+
+(define sink:string
+  (case-lambda
+    (() (string display))
+    ((display)
+     (define out (open-output-string))
+     (make-sink
+      (lambda (it)
+        (display it out)
+        #f)
+      (lambda () (get-output-string out))))))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
